@@ -43,6 +43,10 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
+static UX_SLAVE_CLASS_CDC_ACM *g_cdc_acm;
+static ULONG g_echo_length;
+static UCHAR g_echo_pending;
+static UCHAR g_echo_buffer[64];
 
 /* USER CODE END PV */
 
@@ -65,7 +69,9 @@
 VOID USBD_CDC_ACM_Activate(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_Activate */
-  UX_PARAMETER_NOT_USED(cdc_acm_instance);
+  g_cdc_acm = (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance;
+  g_echo_pending = UX_FALSE;
+  g_echo_length = 0U;
   /* USER CODE END USBD_CDC_ACM_Activate */
 
   return;
@@ -81,6 +87,9 @@ VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_Deactivate */
   UX_PARAMETER_NOT_USED(cdc_acm_instance);
+  g_cdc_acm = UX_NULL;
+  g_echo_pending = UX_FALSE;
+  g_echo_length = 0U;
   /* USER CODE END USBD_CDC_ACM_Deactivate */
 
   return;
@@ -102,5 +111,39 @@ VOID USBD_CDC_ACM_ParameterChange(VOID *cdc_acm_instance)
 }
 
 /* USER CODE BEGIN 1 */
+VOID USBD_CDC_ACM_Process(VOID)
+{
+  UINT status;
+  ULONG actual_length = 0U;
+
+  if (g_cdc_acm == UX_NULL)
+  {
+    return;
+  }
+
+  if (g_echo_pending == UX_TRUE)
+  {
+    status = ux_device_class_cdc_acm_write_run(g_cdc_acm, g_echo_buffer, g_echo_length, &actual_length);
+    if (status == UX_STATE_NEXT)
+    {
+      g_echo_pending = UX_FALSE;
+      g_echo_length = 0U;
+    }
+    else if (status < UX_STATE_NEXT)
+    {
+      g_echo_pending = UX_FALSE;
+      g_echo_length = 0U;
+    }
+
+    return;
+  }
+
+  status = ux_device_class_cdc_acm_read_run(g_cdc_acm, g_echo_buffer, sizeof(g_echo_buffer), &actual_length);
+  if ((status == UX_STATE_NEXT) && (actual_length > 0U))
+  {
+    g_echo_length = actual_length;
+    g_echo_pending = UX_TRUE;
+  }
+}
 
 /* USER CODE END 1 */
