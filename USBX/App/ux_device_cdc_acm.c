@@ -23,6 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "ux_system.h"
 
 /* USER CODE END Includes */
 
@@ -44,7 +45,6 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
 static UX_SLAVE_CLASS_CDC_ACM *g_cdc_acm;
-static UCHAR g_cdc_acm_connected;
 static ULONG g_echo_length;
 static UCHAR g_echo_pending;
 static UCHAR g_echo_buffer[64];
@@ -71,7 +71,8 @@ VOID USBD_CDC_ACM_Activate(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_Activate */
   g_cdc_acm = (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance;
-  g_cdc_acm_connected = UX_TRUE;
+  g_cdc_acm->ux_device_class_cdc_acm_read_state = UX_STATE_RESET;
+  g_cdc_acm->ux_device_class_cdc_acm_write_state = UX_STATE_RESET;
   g_echo_pending = UX_FALSE;
   g_echo_length = 0U;
   /* USER CODE END USBD_CDC_ACM_Activate */
@@ -89,7 +90,6 @@ VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_Deactivate */
   UX_PARAMETER_NOT_USED(cdc_acm_instance);
-  g_cdc_acm_connected = UX_FALSE;
   g_cdc_acm = UX_NULL;
   g_echo_pending = UX_FALSE;
   g_echo_length = 0U;
@@ -107,7 +107,7 @@ VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
 VOID USBD_CDC_ACM_ParameterChange(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_ParameterChange */
-  g_cdc_acm = (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance;
+  UX_PARAMETER_NOT_USED(cdc_acm_instance);
   /* USER CODE END USBD_CDC_ACM_ParameterChange */
 
   return;
@@ -120,12 +120,12 @@ VOID USBD_CDC_ACM_Process(VOID *arg)
   ULONG actual_length = 0U;
   UX_PARAMETER_NOT_USED(arg);
 
-  if ((g_cdc_acm == UX_NULL) || (g_cdc_acm_connected == UX_FALSE))
+  if ((_ux_system_slave == UX_NULL) || (g_cdc_acm == UX_NULL))
   {
     return;
   }
 
-  if (g_cdc_acm->ux_slave_class_cdc_acm_data_dtr_state == 0U)
+  if (_ux_system_slave->ux_system_slave_device.ux_slave_device_state != UX_DEVICE_CONFIGURED)
   {
     g_echo_pending = UX_FALSE;
     g_echo_length = 0U;
