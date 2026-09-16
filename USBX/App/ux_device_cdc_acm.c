@@ -44,6 +44,7 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
 static UX_SLAVE_CLASS_CDC_ACM *g_cdc_acm;
+static UCHAR g_cdc_acm_connected;
 static ULONG g_echo_length;
 static UCHAR g_echo_pending;
 static UCHAR g_echo_buffer[64];
@@ -70,6 +71,7 @@ VOID USBD_CDC_ACM_Activate(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_Activate */
   g_cdc_acm = (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance;
+  g_cdc_acm_connected = UX_TRUE;
   g_echo_pending = UX_FALSE;
   g_echo_length = 0U;
   /* USER CODE END USBD_CDC_ACM_Activate */
@@ -87,6 +89,7 @@ VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_Deactivate */
   UX_PARAMETER_NOT_USED(cdc_acm_instance);
+  g_cdc_acm_connected = UX_FALSE;
   g_cdc_acm = UX_NULL;
   g_echo_pending = UX_FALSE;
   g_echo_length = 0U;
@@ -104,7 +107,7 @@ VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
 VOID USBD_CDC_ACM_ParameterChange(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_ParameterChange */
-  UX_PARAMETER_NOT_USED(cdc_acm_instance);
+  g_cdc_acm = (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance;
   /* USER CODE END USBD_CDC_ACM_ParameterChange */
 
   return;
@@ -117,8 +120,15 @@ VOID USBD_CDC_ACM_Process(VOID *arg)
   ULONG actual_length = 0U;
   UX_PARAMETER_NOT_USED(arg);
 
-  if (g_cdc_acm == UX_NULL)
+  if ((g_cdc_acm == UX_NULL) || (g_cdc_acm_connected == UX_FALSE))
   {
+    return;
+  }
+
+  if (g_cdc_acm->ux_slave_class_cdc_acm_data_dtr_state == 0U)
+  {
+    g_echo_pending = UX_FALSE;
+    g_echo_length = 0U;
     return;
   }
 
@@ -139,11 +149,16 @@ VOID USBD_CDC_ACM_Process(VOID *arg)
     return;
   }
 
-  status = ux_device_class_cdc_acm_read_run(g_cdc_acm, g_echo_buffer, sizeof(g_echo_buffer), &actual_length);
+  status = ux_device_class_cdc_acm_read_run(g_cdc_acm, g_echo_buffer, 1U, &actual_length);
   if ((status == UX_STATE_NEXT) && (actual_length > 0U))
   {
     g_echo_length = actual_length;
     g_echo_pending = UX_TRUE;
+  }
+  else if (status < UX_STATE_NEXT)
+  {
+    g_echo_pending = UX_FALSE;
+    g_echo_length = 0U;
   }
 }
 
