@@ -111,10 +111,11 @@ VOID USBD_CDC_ACM_ParameterChange(VOID *cdc_acm_instance)
 }
 
 /* USER CODE BEGIN 1 */
-VOID USBD_CDC_ACM_Process(VOID)
+VOID USBD_CDC_ACM_Process(VOID *arg)
 {
   UINT status;
   ULONG actual_length = 0U;
+  UX_PARAMETER_NOT_USED(arg);
 
   if (g_cdc_acm == UX_NULL)
   {
