@@ -161,7 +161,7 @@ VOID USBD_CDC_ACM_Process(VOID *arg)
     return;
   }
 
-  status = ux_device_class_cdc_acm_read_run(g_cdc_acm, g_echo_buffer, 1U, &actual_length);
+  status = ux_device_class_cdc_acm_read_run(g_cdc_acm, g_echo_buffer, sizeof(g_echo_buffer), &actual_length);
   dbg_cdc_last_read_status = status;
   dbg_cdc_last_read_actual_length = actual_length;
   if ((status == UX_STATE_NEXT) && (actual_length > 0U))
