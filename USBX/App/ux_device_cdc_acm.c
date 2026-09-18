@@ -137,12 +137,6 @@ VOID USBD_CDC_ACM_Process(VOID *arg)
   dbg_cdc_last_connected_state = 1U;
 
   dbg_cdc_last_dtr_state = g_cdc_acm->ux_slave_class_cdc_acm_data_dtr_state;
-  if (g_cdc_acm->ux_slave_class_cdc_acm_data_dtr_state == 0U)
-  {
-    g_echo_pending = UX_FALSE;
-    g_echo_length = 0U;
-    return;
-  }
 
   if (g_echo_pending == UX_TRUE)
   {
