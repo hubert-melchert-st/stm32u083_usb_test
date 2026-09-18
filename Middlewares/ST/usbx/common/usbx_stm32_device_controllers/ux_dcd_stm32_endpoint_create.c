@@ -30,6 +30,13 @@
 #include "ux_dcd_stm32.h"
 #include "ux_device_stack.h"
 
+volatile ULONG dbg_usb_ep_create_calls;
+volatile ULONG dbg_usb_last_ep_create_addr;
+volatile ULONG dbg_usb_last_ep_create_mps;
+volatile ULONG dbg_usb_last_ep_create_type;
+volatile ULONG dbg_usb_ep_open_calls;
+volatile ULONG dbg_usb_last_ep_open_addr;
+
 
 /**************************************************************************/
 /*                                                                        */
@@ -78,6 +85,10 @@ UINT  _ux_dcd_stm32_endpoint_create(UX_DCD_STM32 *dcd_stm32, UX_SLAVE_ENDPOINT *
 
 UX_DCD_STM32_ED     *ed;
 ULONG               stm32_endpoint_index;
+    dbg_usb_ep_create_calls++;
+    dbg_usb_last_ep_create_addr = endpoint -> ux_slave_endpoint_descriptor.bEndpointAddress;
+    dbg_usb_last_ep_create_mps = endpoint -> ux_slave_endpoint_descriptor.wMaxPacketSize;
+    dbg_usb_last_ep_create_type = endpoint -> ux_slave_endpoint_descriptor.bmAttributes & UX_MASK_ENDPOINT_TYPE;
 
 
     /* The endpoint index in the array of the STM32 must match the endpoint number.  */
@@ -113,6 +124,8 @@ ULONG               stm32_endpoint_index;
         {
 
             /* Open the endpoint.  */
+            dbg_usb_ep_open_calls++;
+            dbg_usb_last_ep_open_addr = endpoint -> ux_slave_endpoint_descriptor.bEndpointAddress;
             HAL_PCD_EP_Open(dcd_stm32 -> pcd_handle, endpoint -> ux_slave_endpoint_descriptor.bEndpointAddress,
                             endpoint -> ux_slave_endpoint_descriptor.wMaxPacketSize,
                             endpoint -> ux_slave_endpoint_descriptor.bmAttributes & UX_MASK_ENDPOINT_TYPE);
@@ -125,4 +138,3 @@ ULONG               stm32_endpoint_index;
     /* Return an error.  */
     return(UX_NO_ED_AVAILABLE);
 }
-

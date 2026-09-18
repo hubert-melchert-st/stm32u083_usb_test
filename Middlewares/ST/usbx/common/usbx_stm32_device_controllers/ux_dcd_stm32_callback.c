@@ -29,6 +29,12 @@
 #include "ux_api.h"
 #include "ux_dcd_stm32.h"
 #include "ux_device_stack.h"
+
+volatile ULONG dbg_usb_data_out_cb_calls;
+volatile ULONG dbg_usb_last_data_out_epnum;
+volatile ULONG dbg_usb_last_data_out_rx_count;
+volatile ULONG dbg_usb_last_data_out_req_len;
+volatile ULONG dbg_usb_last_data_out_actual_len;
 #include "ux_utility.h"
 
 
@@ -599,6 +605,8 @@ UX_SLAVE_ENDPOINT       *endpoint;
 
     /* Get the pointer to the DCD.  */
     dcd = &_ux_system_slave -> ux_system_slave_dcd;
+    dbg_usb_data_out_cb_calls++;
+    dbg_usb_last_data_out_epnum = epnum;
 
     /* Get the pointer to the STM32 DCD.  */
     dcd_stm32 = (UX_DCD_STM32 *) dcd -> ux_slave_dcd_controller_hardware;
@@ -622,9 +630,12 @@ UX_SLAVE_ENDPOINT       *endpoint;
 
             /* Read the received data length for the Control endpoint.  */
             transfer_length = HAL_PCD_EP_GetRxCount(hpcd, epnum);
+            dbg_usb_last_data_out_rx_count = transfer_length;
 
             /* Update the length of the data received.  */
             transfer_request -> ux_slave_transfer_request_actual_length += transfer_length;
+            dbg_usb_last_data_out_actual_len = transfer_request -> ux_slave_transfer_request_actual_length;
+            dbg_usb_last_data_out_req_len = transfer_request -> ux_slave_transfer_request_requested_length;
 
             /* Can we accept this much?  */
             if (transfer_request -> ux_slave_transfer_request_actual_length <=
@@ -680,6 +691,9 @@ UX_SLAVE_ENDPOINT       *endpoint;
 
         /* Update the length of the data sent in previous transaction.  */
         transfer_request -> ux_slave_transfer_request_actual_length =  HAL_PCD_EP_GetRxCount(hpcd, epnum);
+        dbg_usb_last_data_out_rx_count = transfer_request -> ux_slave_transfer_request_actual_length;
+        dbg_usb_last_data_out_actual_len = transfer_request -> ux_slave_transfer_request_actual_length;
+        dbg_usb_last_data_out_req_len = transfer_request -> ux_slave_transfer_request_requested_length;
 
         /* Set the completion code to no error.  */
         transfer_request -> ux_slave_transfer_request_completion_code =  UX_SUCCESS;

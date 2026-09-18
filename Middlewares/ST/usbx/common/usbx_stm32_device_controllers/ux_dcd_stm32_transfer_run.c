@@ -31,6 +31,15 @@
 #include "ux_utility.h"
 #include "ux_device_stack.h"
 
+volatile ULONG dbg_usb_transfer_run_calls;
+volatile ULONG dbg_usb_transfer_run_wait_count;
+volatile ULONG dbg_usb_transfer_run_next_count;
+volatile ULONG dbg_usb_transfer_run_exit_count;
+volatile ULONG dbg_usb_last_transfer_ep_addr;
+volatile ULONG dbg_usb_last_transfer_phase;
+volatile ULONG dbg_usb_last_receive_arm_addr;
+volatile ULONG dbg_usb_last_receive_arm_len;
+
 
 #if defined(UX_DEVICE_STANDALONE)
 /**************************************************************************/
@@ -94,6 +103,9 @@ ULONG                   ed_status;
 
     /* Get the pointer to the logical endpoint from the transfer request.  */
     endpoint =  transfer_request -> ux_slave_transfer_request_endpoint;
+    dbg_usb_transfer_run_calls++;
+    dbg_usb_last_transfer_ep_addr = endpoint->ux_slave_endpoint_descriptor.bEndpointAddress;
+    dbg_usb_last_transfer_phase = transfer_request -> ux_slave_transfer_request_phase;
 
     /* Get the physical endpoint address in the endpoint container.  */
     ed =  (UX_DCD_STM32_ED *) endpoint -> ux_slave_endpoint_ed;
@@ -107,6 +119,7 @@ ULONG                   ed_status;
     if (_ux_system_slave -> ux_system_slave_device.ux_slave_device_state == UX_DEVICE_RESET)
     {
         transfer_request -> ux_slave_transfer_request_completion_code = UX_TRANSFER_BUS_RESET;
+        dbg_usb_transfer_run_exit_count++;
         UX_RESTORE
         return(UX_STATE_EXIT);
     }
@@ -115,6 +128,7 @@ ULONG                   ed_status;
     if (ed_status & UX_DCD_STM32_ED_STATUS_STALLED)
     {
         transfer_request -> ux_slave_transfer_request_completion_code = UX_TRANSFER_STALLED;
+        dbg_usb_transfer_run_next_count++;
         UX_RESTORE
         return(UX_STATE_NEXT);
     }
@@ -129,9 +143,11 @@ ULONG                   ed_status;
             ed -> ux_dcd_stm32_ed_status &= (UX_DCD_STM32_ED_STATUS_USED |
                                         UX_DCD_STM32_ED_STATUS_STALLED |
                                         UX_DCD_STM32_ED_STATUS_TASK_PENDING);
+            dbg_usb_transfer_run_next_count++;
             UX_RESTORE
             return(UX_STATE_NEXT);
         }
+        dbg_usb_transfer_run_wait_count++;
         UX_RESTORE
         return(UX_STATE_WAIT);
     }
@@ -159,9 +175,12 @@ ULONG                   ed_status;
                             endpoint->ux_slave_endpoint_descriptor.bEndpointAddress,
                             transfer_request->ux_slave_transfer_request_data_pointer,
                             transfer_request->ux_slave_transfer_request_requested_length);
+        dbg_usb_last_receive_arm_addr = endpoint->ux_slave_endpoint_descriptor.bEndpointAddress;
+        dbg_usb_last_receive_arm_len = transfer_request->ux_slave_transfer_request_requested_length;
     }
 
     /* Return to caller with WAIT.  */
+    dbg_usb_transfer_run_wait_count++;
     UX_RESTORE
     return(UX_STATE_WAIT);
 }
