@@ -191,11 +191,23 @@ void MX_USB_PCD_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USB_Init 2 */
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x00U, PCD_SNG_BUF, 0x18U); /* EP0 OUT (control) */
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x80U, PCD_SNG_BUF, 0x58U); /* EP0 IN (control) */
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x81U, PCD_SNG_BUF, 0x98U); /* CDC CMD IN (interrupt) */
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x82U, PCD_SNG_BUF, 0xA0U); /* CDC DATA IN (bulk) */
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x03U, PCD_SNG_BUF, 0xE0U); /* CDC DATA OUT (bulk) */
+  const uint32_t ep0_out = 0x00U;
+  const uint32_t ep0_in = 0x80U;
+  const uint32_t cdc_cmd_in = 0x81U;
+  const uint32_t cdc_data_in = 0x82U;
+  const uint32_t cdc_data_out = 0x03U;
+
+  const uint32_t pma_ep0_out = 0x18U;
+  const uint32_t pma_ep0_in = 0x58U;
+  const uint32_t pma_cdc_cmd_in = 0x98U;
+  const uint32_t pma_cdc_data_in = 0xA0U;
+  const uint32_t pma_cdc_data_out = 0xE0U;
+
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, ep0_out, PCD_SNG_BUF, pma_ep0_out);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, ep0_in, PCD_SNG_BUF, pma_ep0_in);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, cdc_cmd_in, PCD_SNG_BUF, pma_cdc_cmd_in);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, cdc_data_in, PCD_SNG_BUF, pma_cdc_data_in);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, cdc_data_out, PCD_SNG_BUF, pma_cdc_data_out);
 
   /* USER CODE END USB_Init 2 */
 
