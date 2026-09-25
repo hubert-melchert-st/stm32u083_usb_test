@@ -303,7 +303,6 @@ void USBX_Device_Process(void *arg)
 {
 	UX_PARAMETER_NOT_USED(arg);
 	ux_device_stack_tasks_run();
-	USBD_CDC_ACM_Process(arg);
 }
 
 void USBX_APP_Device_Init(void)
