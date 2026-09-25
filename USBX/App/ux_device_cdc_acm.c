@@ -46,11 +46,8 @@
 typedef struct
 {
   UX_SLAVE_CLASS_CDC_ACM *instance;
-  UCHAR rx_buffer[64];
-  ULONG rx_length;
-  ULONG tx_length;
-  ULONG tx_actual_length;
-  UINT tx_pending;
+  UX_SLAVE_CLASS_CDC_ACM_CALLBACK_PARAMETER callbacks;
+  UCHAR tx_buffer[64];
 } usbd_cdc_acm_echo_context_t;
 
 static usbd_cdc_acm_echo_context_t g_cdc_echo_ctx;
@@ -58,11 +55,41 @@ static usbd_cdc_acm_echo_context_t g_cdc_echo_ctx;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
+static UINT USBD_CDC_ACM_WriteCallback(struct UX_SLAVE_CLASS_CDC_ACM_STRUCT *cdc_acm, UINT status, ULONG length);
+static UINT USBD_CDC_ACM_ReadCallback(struct UX_SLAVE_CLASS_CDC_ACM_STRUCT *cdc_acm, UINT status, UCHAR *data_pointer, ULONG length);
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static UINT USBD_CDC_ACM_WriteCallback(struct UX_SLAVE_CLASS_CDC_ACM_STRUCT *cdc_acm, UINT status, ULONG length)
+{
+  UX_PARAMETER_NOT_USED(cdc_acm);
+  UX_PARAMETER_NOT_USED(status);
+  UX_PARAMETER_NOT_USED(length);
+  return UX_SUCCESS;
+}
+
+static UINT USBD_CDC_ACM_ReadCallback(struct UX_SLAVE_CLASS_CDC_ACM_STRUCT *cdc_acm, UINT status, UCHAR *data_pointer, ULONG length)
+{
+  ULONG copy_len;
+
+  if ((status != UX_SUCCESS) || (length == 0U) || (data_pointer == UX_NULL))
+  {
+    return UX_SUCCESS;
+  }
+
+  copy_len = length;
+  if (copy_len > sizeof(g_cdc_echo_ctx.tx_buffer))
+  {
+    copy_len = sizeof(g_cdc_echo_ctx.tx_buffer);
+  }
+
+  _ux_utility_memory_copy(g_cdc_echo_ctx.tx_buffer, data_pointer, copy_len); /* Use case of memcpy is verified. */
+  (void)ux_device_class_cdc_acm_write_with_callback(cdc_acm, g_cdc_echo_ctx.tx_buffer, copy_len);
+
+  return UX_SUCCESS;
+}
 
 /* USER CODE END 0 */
 
@@ -75,11 +102,19 @@ static usbd_cdc_acm_echo_context_t g_cdc_echo_ctx;
 VOID USBD_CDC_ACM_Activate(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_Activate */
+  UINT status;
+
   g_cdc_echo_ctx.instance = (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance;
-  g_cdc_echo_ctx.rx_length = 0U;
-  g_cdc_echo_ctx.tx_length = 0U;
-  g_cdc_echo_ctx.tx_actual_length = 0U;
-  g_cdc_echo_ctx.tx_pending = 0U;
+  g_cdc_echo_ctx.callbacks.ux_device_class_cdc_acm_parameter_write_callback = USBD_CDC_ACM_WriteCallback;
+  g_cdc_echo_ctx.callbacks.ux_device_class_cdc_acm_parameter_read_callback = USBD_CDC_ACM_ReadCallback;
+
+  status = ux_device_class_cdc_acm_ioctl(g_cdc_echo_ctx.instance,
+                                         UX_SLAVE_CLASS_CDC_ACM_IOCTL_TRANSMISSION_START,
+                                         &g_cdc_echo_ctx.callbacks);
+  if (status != UX_SUCCESS)
+  {
+    g_cdc_echo_ctx.instance = UX_NULL;
+  }
   /* USER CODE END USBD_CDC_ACM_Activate */
 
   return;
@@ -96,12 +131,13 @@ VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
   /* USER CODE BEGIN USBD_CDC_ACM_Deactivate */
   if (g_cdc_echo_ctx.instance == (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance)
   {
+    (void)ux_device_class_cdc_acm_ioctl(g_cdc_echo_ctx.instance,
+                                        UX_SLAVE_CLASS_CDC_ACM_IOCTL_TRANSMISSION_STOP,
+                                        UX_NULL);
     g_cdc_echo_ctx.instance = UX_NULL;
   }
-  g_cdc_echo_ctx.rx_length = 0U;
-  g_cdc_echo_ctx.tx_length = 0U;
-  g_cdc_echo_ctx.tx_actual_length = 0U;
-  g_cdc_echo_ctx.tx_pending = 0U;
+
+  UX_PARAMETER_NOT_USED(cdc_acm_instance);
   /* USER CODE END USBD_CDC_ACM_Deactivate */
 
   return;
@@ -116,7 +152,10 @@ VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
 VOID USBD_CDC_ACM_ParameterChange(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_ParameterChange */
-  UX_PARAMETER_NOT_USED(cdc_acm_instance);
+  if (g_cdc_echo_ctx.instance == (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance)
+  {
+    (void)ux_device_class_cdc_acm_tasks_run(g_cdc_echo_ctx.instance);
+  }
   /* USER CODE END USBD_CDC_ACM_ParameterChange */
 
   return;
@@ -125,60 +164,11 @@ VOID USBD_CDC_ACM_ParameterChange(VOID *cdc_acm_instance)
 /* USER CODE BEGIN 1 */
 VOID USBD_CDC_ACM_Process(VOID *arg)
 {
-  UINT status;
-  UX_SLAVE_CLASS_CDC_ACM *cdc_acm;
-
   UX_PARAMETER_NOT_USED(arg);
 
-  cdc_acm = g_cdc_echo_ctx.instance;
-  if (cdc_acm == UX_NULL)
+  if (g_cdc_echo_ctx.instance != UX_NULL)
   {
-    return;
-  }
-
-  if (g_cdc_echo_ctx.tx_pending == 0U)
-  {
-    status = ux_device_class_cdc_acm_read_run(cdc_acm,
-                                              g_cdc_echo_ctx.rx_buffer,
-                                              sizeof(g_cdc_echo_ctx.rx_buffer),
-                                              &g_cdc_echo_ctx.rx_length);
-    if ((status == UX_STATE_NEXT) && (g_cdc_echo_ctx.rx_length > 0U))
-    {
-      g_cdc_echo_ctx.tx_length = g_cdc_echo_ctx.rx_length;
-      g_cdc_echo_ctx.rx_length = 0U;
-      g_cdc_echo_ctx.tx_actual_length = 0U;
-      g_cdc_echo_ctx.tx_pending = 1U;
-    }
-    else if ((status == UX_STATE_ERROR) || (status == UX_STATE_EXIT))
-    {
-      g_cdc_echo_ctx.rx_length = 0U;
-      g_cdc_echo_ctx.tx_length = 0U;
-      g_cdc_echo_ctx.tx_actual_length = 0U;
-      g_cdc_echo_ctx.tx_pending = 0U;
-      return;
-    }
-  }
-
-  if (g_cdc_echo_ctx.tx_pending != 0U)
-  {
-    status = ux_device_class_cdc_acm_write_run(cdc_acm,
-                                               g_cdc_echo_ctx.rx_buffer,
-                                               g_cdc_echo_ctx.tx_length,
-                                               &g_cdc_echo_ctx.tx_actual_length);
-    if (status == UX_STATE_NEXT)
-    {
-      g_cdc_echo_ctx.rx_length = 0U;
-      g_cdc_echo_ctx.tx_length = 0U;
-      g_cdc_echo_ctx.tx_actual_length = 0U;
-      g_cdc_echo_ctx.tx_pending = 0U;
-    }
-    else if ((status == UX_STATE_ERROR) || (status == UX_STATE_EXIT))
-    {
-      g_cdc_echo_ctx.rx_length = 0U;
-      g_cdc_echo_ctx.tx_length = 0U;
-      g_cdc_echo_ctx.tx_actual_length = 0U;
-      g_cdc_echo_ctx.tx_pending = 0U;
-    }
+    (void)ux_device_class_cdc_acm_tasks_run(g_cdc_echo_ctx.instance);
   }
 }
 /* USER CODE END 1 */
