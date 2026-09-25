@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "main.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -72,6 +72,7 @@ VOID USBD_CDC_ACM_Activate(VOID *cdc_acm_instance)
   /* USER CODE BEGIN USBD_CDC_ACM_Activate */
   cdc_acm = (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance;
   cdc_echo_reset();
+  HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_SET);
   /* USER CODE END USBD_CDC_ACM_Activate */
 
   return;
@@ -89,6 +90,7 @@ VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
   UX_PARAMETER_NOT_USED(cdc_acm_instance);
   cdc_acm = UX_NULL;
   cdc_echo_reset();
+  HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_RESET);
   /* USER CODE END USBD_CDC_ACM_Deactivate */
 
   return;

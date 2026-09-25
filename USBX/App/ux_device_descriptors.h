@@ -44,7 +44,10 @@ extern "C" {
 #define USBD_CDC_ACM_CLASS_ACTIVATED                   1U
 
 #define USBD_CONFIG_MAXPOWER                           25U
-#define USBD_COMPOSITE_USE_IAD                         0U
+/* USBX binds CDC to the data IF (0x0A) only when IAD groups IF0+IF1.
+   Without IAD the class stays on comm IF 0 (0x02), QUERY rejects it,
+   Activate never runs, COM enumerates, echo stays dead. */
+#define USBD_COMPOSITE_USE_IAD                         1U
 #define USBD_DEVICE_FRAMEWORK_BUILDER_ENABLED          1U
 
 #define USBD_FRAMEWORK_MAX_DESC_SZ                     200U
