@@ -46,7 +46,7 @@
 typedef struct
 {
   UX_SLAVE_CLASS_CDC_ACM *instance;
-  UCHAR rx_buffer[1];
+  UCHAR rx_buffer[64];
   ULONG rx_length;
   ULONG tx_length;
   ULONG tx_actual_length;
