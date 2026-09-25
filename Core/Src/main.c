@@ -89,7 +89,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USBX_Device_Init();
+  MX_USBX_Device_Init(); /* Calls USBX_APP_Device_Init(), which runs HAL_PCD_Start() */
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
