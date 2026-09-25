@@ -48,6 +48,9 @@ typedef struct
   UX_SLAVE_CLASS_CDC_ACM *instance;
   UX_SLAVE_CLASS_CDC_ACM_CALLBACK_PARAMETER callbacks;
   UCHAR tx_buffer[64];
+  UCHAR pending_buffer[64];
+  ULONG pending_length;
+  UINT tx_busy;
 } usbd_cdc_acm_echo_context_t;
 
 static usbd_cdc_acm_echo_context_t g_cdc_echo_ctx;
@@ -57,6 +60,7 @@ static usbd_cdc_acm_echo_context_t g_cdc_echo_ctx;
 /* USER CODE BEGIN PFP */
 static UINT USBD_CDC_ACM_WriteCallback(struct UX_SLAVE_CLASS_CDC_ACM_STRUCT *cdc_acm, UINT status, ULONG length);
 static UINT USBD_CDC_ACM_ReadCallback(struct UX_SLAVE_CLASS_CDC_ACM_STRUCT *cdc_acm, UINT status, UCHAR *data_pointer, ULONG length);
+static void USBD_CDC_ACM_TrySendPending(void);
 
 /* USER CODE END PFP */
 
@@ -67,11 +71,14 @@ static UINT USBD_CDC_ACM_WriteCallback(struct UX_SLAVE_CLASS_CDC_ACM_STRUCT *cdc
   UX_PARAMETER_NOT_USED(cdc_acm);
   UX_PARAMETER_NOT_USED(status);
   UX_PARAMETER_NOT_USED(length);
+  g_cdc_echo_ctx.tx_busy = 0U;
+  USBD_CDC_ACM_TrySendPending();
   return UX_SUCCESS;
 }
 
 static UINT USBD_CDC_ACM_ReadCallback(struct UX_SLAVE_CLASS_CDC_ACM_STRUCT *cdc_acm, UINT status, UCHAR *data_pointer, ULONG length)
 {
+  UINT write_status;
   ULONG copy_len;
 
   if ((status != UX_SUCCESS) || (length == 0U) || (data_pointer == UX_NULL))
@@ -85,10 +92,50 @@ static UINT USBD_CDC_ACM_ReadCallback(struct UX_SLAVE_CLASS_CDC_ACM_STRUCT *cdc_
     copy_len = sizeof(g_cdc_echo_ctx.tx_buffer);
   }
 
+  if (g_cdc_echo_ctx.tx_busy != 0U)
+  {
+    _ux_utility_memory_copy(g_cdc_echo_ctx.pending_buffer, data_pointer, copy_len); /* Use case of memcpy is verified. */
+    g_cdc_echo_ctx.pending_length = copy_len;
+    return UX_SUCCESS;
+  }
+
   _ux_utility_memory_copy(g_cdc_echo_ctx.tx_buffer, data_pointer, copy_len); /* Use case of memcpy is verified. */
-  (void)ux_device_class_cdc_acm_write_with_callback(cdc_acm, g_cdc_echo_ctx.tx_buffer, copy_len);
+  write_status = ux_device_class_cdc_acm_write_with_callback(cdc_acm, g_cdc_echo_ctx.tx_buffer, copy_len);
+  if (write_status == UX_SUCCESS)
+  {
+    g_cdc_echo_ctx.tx_busy = 1U;
+  }
+  else
+  {
+    _ux_utility_memory_copy(g_cdc_echo_ctx.pending_buffer, data_pointer, copy_len); /* Use case of memcpy is verified. */
+    g_cdc_echo_ctx.pending_length = copy_len;
+  }
 
   return UX_SUCCESS;
+}
+
+static void USBD_CDC_ACM_TrySendPending(void)
+{
+  UINT status;
+
+  if ((g_cdc_echo_ctx.instance == UX_NULL) ||
+      (g_cdc_echo_ctx.tx_busy != 0U) ||
+      (g_cdc_echo_ctx.pending_length == 0U))
+  {
+    return;
+  }
+
+  _ux_utility_memory_copy(g_cdc_echo_ctx.tx_buffer,
+                          g_cdc_echo_ctx.pending_buffer,
+                          g_cdc_echo_ctx.pending_length); /* Use case of memcpy is verified. */
+  status = ux_device_class_cdc_acm_write_with_callback(g_cdc_echo_ctx.instance,
+                                                       g_cdc_echo_ctx.tx_buffer,
+                                                       g_cdc_echo_ctx.pending_length);
+  if (status == UX_SUCCESS)
+  {
+    g_cdc_echo_ctx.pending_length = 0U;
+    g_cdc_echo_ctx.tx_busy = 1U;
+  }
 }
 
 /* USER CODE END 0 */
@@ -107,6 +154,8 @@ VOID USBD_CDC_ACM_Activate(VOID *cdc_acm_instance)
   g_cdc_echo_ctx.instance = (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance;
   g_cdc_echo_ctx.callbacks.ux_device_class_cdc_acm_parameter_write_callback = USBD_CDC_ACM_WriteCallback;
   g_cdc_echo_ctx.callbacks.ux_device_class_cdc_acm_parameter_read_callback = USBD_CDC_ACM_ReadCallback;
+  g_cdc_echo_ctx.pending_length = 0U;
+  g_cdc_echo_ctx.tx_busy = 0U;
 
   status = ux_device_class_cdc_acm_ioctl(g_cdc_echo_ctx.instance,
                                          UX_SLAVE_CLASS_CDC_ACM_IOCTL_TRANSMISSION_START,
@@ -136,6 +185,8 @@ VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
                                         UX_NULL);
     g_cdc_echo_ctx.instance = UX_NULL;
   }
+  g_cdc_echo_ctx.pending_length = 0U;
+  g_cdc_echo_ctx.tx_busy = 0U;
 
   UX_PARAMETER_NOT_USED(cdc_acm_instance);
   /* USER CODE END USBD_CDC_ACM_Deactivate */
@@ -152,10 +203,7 @@ VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
 VOID USBD_CDC_ACM_ParameterChange(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_ParameterChange */
-  if (g_cdc_echo_ctx.instance == (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance)
-  {
-    (void)ux_device_class_cdc_acm_tasks_run(g_cdc_echo_ctx.instance);
-  }
+  UX_PARAMETER_NOT_USED(cdc_acm_instance);
   /* USER CODE END USBD_CDC_ACM_ParameterChange */
 
   return;
@@ -168,6 +216,7 @@ VOID USBD_CDC_ACM_Process(VOID *arg)
 
   if (g_cdc_echo_ctx.instance != UX_NULL)
   {
+    USBD_CDC_ACM_TrySendPending();
     (void)ux_device_class_cdc_acm_tasks_run(g_cdc_echo_ctx.instance);
   }
 }
