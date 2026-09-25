@@ -216,7 +216,7 @@ VOID USBD_CDC_ACM_Process(VOID *arg)
   if (g_cdc_echo_ctx.instance != UX_NULL)
   {
     USBD_CDC_ACM_TrySendPending();
-    (void)ux_device_class_cdc_acm_tasks_run(g_cdc_echo_ctx.instance);
+    (void)_ux_device_class_cdc_acm_tasks_run(g_cdc_echo_ctx.instance);
   }
 }
 /* USER CODE END 1 */
