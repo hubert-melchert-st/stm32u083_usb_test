@@ -32,6 +32,18 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define USB_EP0_OUT_ADDR            0x00U
+#define USB_EP0_IN_ADDR             0x80U
+#define USB_CDC_CMD_IN_EP_ADDR      0x81U
+#define USB_CDC_DATA_IN_EP_ADDR     0x82U
+#define USB_CDC_DATA_OUT_EP_ADDR    0x03U
+
+/* PMA map chosen for non-overlapping control + CDC endpoints in USB DRD FS SRAM. */
+#define USB_PMA_EP0_OUT_OFFSET      0x18U
+#define USB_PMA_EP0_IN_OFFSET       0x58U
+#define USB_PMA_CDC_CMD_IN_OFFSET   0x98U
+#define USB_PMA_CDC_DATA_IN_OFFSET  0xA0U
+#define USB_PMA_CDC_DATA_OUT_OFFSET 0xE0U
 
 /* USER CODE END PD */
 
@@ -191,23 +203,11 @@ void MX_USB_PCD_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USB_Init 2 */
-  const uint32_t ep0_out = 0x00U;
-  const uint32_t ep0_in = 0x80U;
-  const uint32_t cdc_cmd_in = 0x81U;
-  const uint32_t cdc_data_in = 0x82U;
-  const uint32_t cdc_data_out = 0x03U;
-
-  const uint32_t pma_ep0_out = 0x18U;
-  const uint32_t pma_ep0_in = 0x58U;
-  const uint32_t pma_cdc_cmd_in = 0x98U;
-  const uint32_t pma_cdc_data_in = 0xA0U;
-  const uint32_t pma_cdc_data_out = 0xE0U;
-
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, ep0_out, PCD_SNG_BUF, pma_ep0_out);
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, ep0_in, PCD_SNG_BUF, pma_ep0_in);
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, cdc_cmd_in, PCD_SNG_BUF, pma_cdc_cmd_in);
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, cdc_data_in, PCD_SNG_BUF, pma_cdc_data_in);
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, cdc_data_out, PCD_SNG_BUF, pma_cdc_data_out);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, USB_EP0_OUT_ADDR, PCD_SNG_BUF, USB_PMA_EP0_OUT_OFFSET);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, USB_EP0_IN_ADDR, PCD_SNG_BUF, USB_PMA_EP0_IN_OFFSET);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, USB_CDC_CMD_IN_EP_ADDR, PCD_SNG_BUF, USB_PMA_CDC_CMD_IN_OFFSET);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, USB_CDC_DATA_IN_EP_ADDR, PCD_SNG_BUF, USB_PMA_CDC_DATA_IN_OFFSET);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, USB_CDC_DATA_OUT_EP_ADDR, PCD_SNG_BUF, USB_PMA_CDC_DATA_OUT_OFFSET);
 
   /* USER CODE END USB_Init 2 */
 

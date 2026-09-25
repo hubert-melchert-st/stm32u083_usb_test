@@ -56,7 +56,7 @@ void USBX_Device_Process(void *arg);
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
-UINT MX_USBX_Device_Init(VOID);
+UINT MX_USBX_Device_Init(void);
 
 /* USER CODE BEGIN EFP */
 

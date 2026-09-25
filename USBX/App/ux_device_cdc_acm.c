@@ -43,11 +43,17 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-static UX_SLAVE_CLASS_CDC_ACM *g_cdc_acm;
-static UCHAR g_rx_buffer[64];
-static ULONG g_rx_length;
-static ULONG g_tx_length;
-static UINT g_tx_pending;
+typedef struct
+{
+  UX_SLAVE_CLASS_CDC_ACM *instance;
+  UCHAR rx_buffer[64];
+  ULONG rx_length;
+  ULONG tx_length;
+  ULONG tx_actual_length;
+  UINT tx_pending;
+} usbd_cdc_acm_echo_context_t;
+
+static usbd_cdc_acm_echo_context_t g_cdc_echo_ctx;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -69,10 +75,11 @@ static UINT g_tx_pending;
 VOID USBD_CDC_ACM_Activate(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_Activate */
-  g_cdc_acm = (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance;
-  g_rx_length = 0U;
-  g_tx_length = 0U;
-  g_tx_pending = 0U;
+  g_cdc_echo_ctx.instance = (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance;
+  g_cdc_echo_ctx.rx_length = 0U;
+  g_cdc_echo_ctx.tx_length = 0U;
+  g_cdc_echo_ctx.tx_actual_length = 0U;
+  g_cdc_echo_ctx.tx_pending = 0U;
   /* USER CODE END USBD_CDC_ACM_Activate */
 
   return;
@@ -87,13 +94,14 @@ VOID USBD_CDC_ACM_Activate(VOID *cdc_acm_instance)
 VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_Deactivate */
-  if (g_cdc_acm == (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance)
+  if (g_cdc_echo_ctx.instance == (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance)
   {
-    g_cdc_acm = UX_NULL;
+    g_cdc_echo_ctx.instance = UX_NULL;
   }
-  g_rx_length = 0U;
-  g_tx_length = 0U;
-  g_tx_pending = 0U;
+  g_cdc_echo_ctx.rx_length = 0U;
+  g_cdc_echo_ctx.tx_length = 0U;
+  g_cdc_echo_ctx.tx_actual_length = 0U;
+  g_cdc_echo_ctx.tx_pending = 0U;
   /* USER CODE END USBD_CDC_ACM_Deactivate */
 
   return;
@@ -121,41 +129,52 @@ VOID USBD_CDC_ACM_Process(VOID *arg)
 
   UX_PARAMETER_NOT_USED(arg);
 
-  if (g_cdc_acm == UX_NULL)
+  if (g_cdc_echo_ctx.instance == UX_NULL)
   {
     return;
   }
 
-  if (g_tx_pending == 0U)
+  if (g_cdc_echo_ctx.tx_pending == 0U)
   {
-    status = ux_device_class_cdc_acm_read_run(g_cdc_acm, g_rx_buffer, sizeof(g_rx_buffer), &g_rx_length);
-    if ((status == UX_STATE_NEXT) && (g_rx_length > 0U))
+    status = ux_device_class_cdc_acm_read_run(g_cdc_echo_ctx.instance,
+                                              g_cdc_echo_ctx.rx_buffer,
+                                              sizeof(g_cdc_echo_ctx.rx_buffer),
+                                              &g_cdc_echo_ctx.rx_length);
+    if ((status == UX_STATE_NEXT) && (g_cdc_echo_ctx.rx_length > 0U))
     {
-      g_tx_length = g_rx_length;
-      g_tx_pending = 1U;
+      g_cdc_echo_ctx.tx_length = g_cdc_echo_ctx.rx_length;
+      g_cdc_echo_ctx.tx_actual_length = 0U;
+      g_cdc_echo_ctx.tx_pending = 1U;
     }
     else if (status < UX_STATE_NEXT)
     {
-      g_rx_length = 0U;
-      g_tx_pending = 0U;
+      g_cdc_echo_ctx.rx_length = 0U;
+      g_cdc_echo_ctx.tx_length = 0U;
+      g_cdc_echo_ctx.tx_actual_length = 0U;
+      g_cdc_echo_ctx.tx_pending = 0U;
       return;
     }
   }
 
-  if (g_tx_pending != 0U)
+  if (g_cdc_echo_ctx.tx_pending != 0U)
   {
-    status = ux_device_class_cdc_acm_write_run(g_cdc_acm, g_rx_buffer, g_tx_length, &g_rx_length);
+    status = ux_device_class_cdc_acm_write_run(g_cdc_echo_ctx.instance,
+                                               g_cdc_echo_ctx.rx_buffer,
+                                               g_cdc_echo_ctx.tx_length,
+                                               &g_cdc_echo_ctx.tx_actual_length);
     if (status == UX_STATE_NEXT)
     {
-      g_rx_length = 0U;
-      g_tx_length = 0U;
-      g_tx_pending = 0U;
+      g_cdc_echo_ctx.rx_length = 0U;
+      g_cdc_echo_ctx.tx_length = 0U;
+      g_cdc_echo_ctx.tx_actual_length = 0U;
+      g_cdc_echo_ctx.tx_pending = 0U;
     }
     else if (status < UX_STATE_NEXT)
     {
-      g_rx_length = 0U;
-      g_tx_length = 0U;
-      g_tx_pending = 0U;
+      g_cdc_echo_ctx.rx_length = 0U;
+      g_cdc_echo_ctx.tx_length = 0U;
+      g_cdc_echo_ctx.tx_actual_length = 0U;
+      g_cdc_echo_ctx.tx_pending = 0U;
     }
   }
 }

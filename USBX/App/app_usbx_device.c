@@ -71,7 +71,7 @@ static UINT USBD_ChangeFunction(ULONG Device_State);
   * @retval status
   */
 
-UINT MX_USBX_Device_Init(VOID)
+UINT MX_USBX_Device_Init(void)
 {
    UINT ret = UX_SUCCESS;
   UCHAR *device_framework_high_speed;
