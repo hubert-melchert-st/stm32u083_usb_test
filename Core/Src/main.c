@@ -39,6 +39,9 @@
 #define USB_CDC_DATA_OUT_EP_ADDR    0x03U
 
 /* PMA map chosen for non-overlapping control + CDC endpoints in USB DRD FS SRAM. */
+/* Must match USBX descriptor endpoints in ux_device_descriptors.h:
+ * EP0 OUT 0x00 (64B), EP0 IN 0x80 (64B), CDC CMD IN 0x81 (8B),
+ * CDC DATA IN 0x82 (64B FS), CDC DATA OUT 0x03 (64B FS). */
 #define USB_PMA_EP0_OUT_OFFSET      0x18U
 #define USB_PMA_EP0_IN_OFFSET       0x58U
 #define USB_PMA_CDC_CMD_IN_OFFSET   0x98U
