@@ -617,7 +617,10 @@
 /* #define UX_ENABLE_ERROR_CHECKING */
 
 /* USER CODE BEGIN 2 */
-
+/* Full-speed bulk packets are 64 B. Without ZLP a 64-byte echo can hang the host. */
+#ifndef UX_DEVICE_CLASS_CDC_ACM_WRITE_AUTO_ZLP
+#define UX_DEVICE_CLASS_CDC_ACM_WRITE_AUTO_ZLP
+#endif
 /* USER CODE END 2 */
 
 #endif

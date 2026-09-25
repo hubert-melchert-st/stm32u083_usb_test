@@ -301,7 +301,11 @@ static UINT USBD_ChangeFunction(ULONG Device_State)
 /* USER CODE BEGIN 1 */
 void USBX_Device_Process(void *arg)
 {
+	UX_PARAMETER_NOT_USED(arg);
+
+	/* Drive USBX first, then the CDC echo state machine. Both are cooperative. */
 	ux_device_stack_tasks_run();
+	USBD_CDC_ACM_WriteReadProcess();
 }
 
 void USBX_APP_Device_Init(void)
