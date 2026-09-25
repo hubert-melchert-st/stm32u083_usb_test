@@ -46,7 +46,7 @@
 typedef struct
 {
   UX_SLAVE_CLASS_CDC_ACM *instance;
-  UCHAR rx_buffer[64];
+  UCHAR rx_buffer[1];
   ULONG rx_length;
   ULONG tx_length;
   ULONG tx_actual_length;
@@ -146,7 +146,7 @@ VOID USBD_CDC_ACM_Process(VOID *arg)
       g_cdc_echo_ctx.tx_actual_length = 0U;
       g_cdc_echo_ctx.tx_pending = 1U;
     }
-    else if (status < UX_STATE_NEXT)
+    else if ((status == UX_STATE_ERROR) || (status == UX_STATE_EXIT))
     {
       g_cdc_echo_ctx.rx_length = 0U;
       g_cdc_echo_ctx.tx_length = 0U;
@@ -169,7 +169,7 @@ VOID USBD_CDC_ACM_Process(VOID *arg)
       g_cdc_echo_ctx.tx_actual_length = 0U;
       g_cdc_echo_ctx.tx_pending = 0U;
     }
-    else if (status < UX_STATE_NEXT)
+    else if ((status == UX_STATE_ERROR) || (status == UX_STATE_EXIT))
     {
       g_cdc_echo_ctx.rx_length = 0U;
       g_cdc_echo_ctx.tx_length = 0U;
