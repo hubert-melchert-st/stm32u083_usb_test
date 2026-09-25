@@ -89,9 +89,15 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USBX_Device_Init(); /* Calls USBX_APP_Device_Init(), which runs HAL_PCD_Start() */
   /* USER CODE BEGIN 2 */
+  /* Force USB onto real PA11/PA12, not the PA9/PA10 digital remap. */
+  HAL_SYSCFG_DisableRemap(SYSCFG_REMAP_PA11 | SYSCFG_REMAP_PA12);
 
+  if (MX_USBX_Device_Init() != UX_SUCCESS)
+  {
+    HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, GPIO_PIN_SET);
+    Error_Handler();
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -102,6 +108,15 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  USBX_Device_Process(NULL);
+	  /* Heartbeat: firmware is alive. Frozen LED = hardfault after USB start. */
+	  if ((HAL_GetTick() % 500U) < 50U)
+	  {
+	    HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_SET);
+	  }
+	  else
+	  {
+	    HAL_GPIO_WritePin(LED_GREEN_GPIO_Port, LED_GREEN_Pin, GPIO_PIN_RESET);
+	  }
   }
   /* USER CODE END 3 */
 }
@@ -191,24 +206,12 @@ void MX_USB_PCD_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USB_Init 2 */
-  const uint32_t ep0_out = 0x00U;
-  const uint32_t ep0_in = 0x80U;
-  const uint32_t cdc_cmd_in = 0x81U;
-  const uint32_t cdc_data_in = 0x82U;
-  const uint32_t cdc_data_out = 0x03U;
-
-  const uint32_t pma_ep0_out = 0x18U;
-  const uint32_t pma_ep0_in = 0x58U;
-  const uint32_t pma_cdc_cmd_in = 0x98U;
-  const uint32_t pma_cdc_data_in = 0xA0U;
-  const uint32_t pma_cdc_data_out = 0xE0U;
-
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, ep0_out, PCD_SNG_BUF, pma_ep0_out);
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, ep0_in, PCD_SNG_BUF, pma_ep0_in);
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, cdc_cmd_in, PCD_SNG_BUF, pma_cdc_cmd_in);
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, cdc_data_in, PCD_SNG_BUF, pma_cdc_data_in);
-  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, cdc_data_out, PCD_SNG_BUF, pma_cdc_data_out);
-
+  /* Official STM32CubeU0 U083 CDC map. Must match ux_device_descriptors.h. */
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x00, PCD_SNG_BUF, 0x14);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x80, PCD_SNG_BUF, 0x54);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x81, PCD_SNG_BUF, 0x94);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x01, PCD_SNG_BUF, 0xD4);
+  HAL_PCDEx_PMAConfig(&hpcd_USB_DRD_FS, 0x82, PCD_SNG_BUF, 0x114);
   /* USER CODE END USB_Init 2 */
 
 }

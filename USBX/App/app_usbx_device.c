@@ -229,7 +229,7 @@ static UINT USBD_ChangeFunction(ULONG Device_State)
     case UX_DEVICE_ATTACHED:
 
       /* USER CODE BEGIN UX_DEVICE_ATTACHED */
-
+      HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, GPIO_PIN_SET);
       /* USER CODE END UX_DEVICE_ATTACHED */
 
       break;
@@ -237,7 +237,7 @@ static UINT USBD_ChangeFunction(ULONG Device_State)
     case UX_DEVICE_REMOVED:
 
       /* USER CODE BEGIN UX_DEVICE_REMOVED */
-
+      HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, GPIO_PIN_RESET);
       /* USER CODE END UX_DEVICE_REMOVED */
 
       break;
