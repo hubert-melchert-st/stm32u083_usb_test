@@ -43,7 +43,11 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
+static UX_SLAVE_CLASS_CDC_ACM *g_cdc_acm;
+static UCHAR g_rx_buffer[64];
+static ULONG g_rx_length;
+static ULONG g_tx_length;
+static UINT g_tx_pending;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -65,7 +69,10 @@
 VOID USBD_CDC_ACM_Activate(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_Activate */
-  UX_PARAMETER_NOT_USED(cdc_acm_instance);
+  g_cdc_acm = (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance;
+  g_rx_length = 0U;
+  g_tx_length = 0U;
+  g_tx_pending = 0U;
   /* USER CODE END USBD_CDC_ACM_Activate */
 
   return;
@@ -80,7 +87,13 @@ VOID USBD_CDC_ACM_Activate(VOID *cdc_acm_instance)
 VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
 {
   /* USER CODE BEGIN USBD_CDC_ACM_Deactivate */
-  UX_PARAMETER_NOT_USED(cdc_acm_instance);
+  if (g_cdc_acm == (UX_SLAVE_CLASS_CDC_ACM *)cdc_acm_instance)
+  {
+    g_cdc_acm = UX_NULL;
+  }
+  g_rx_length = 0U;
+  g_tx_length = 0U;
+  g_tx_pending = 0U;
   /* USER CODE END USBD_CDC_ACM_Deactivate */
 
   return;
@@ -102,4 +115,48 @@ VOID USBD_CDC_ACM_ParameterChange(VOID *cdc_acm_instance)
 }
 
 /* USER CODE BEGIN 1 */
+VOID USBD_CDC_ACM_Process(VOID *arg)
+{
+  UINT status;
+
+  UX_PARAMETER_NOT_USED(arg);
+
+  if (g_cdc_acm == UX_NULL)
+  {
+    return;
+  }
+
+  if (g_tx_pending == 0U)
+  {
+    status = ux_device_class_cdc_acm_read_run(g_cdc_acm, g_rx_buffer, sizeof(g_rx_buffer), &g_rx_length);
+    if ((status == UX_STATE_NEXT) && (g_rx_length > 0U))
+    {
+      g_tx_length = g_rx_length;
+      g_tx_pending = 1U;
+    }
+    else if (status < UX_STATE_NEXT)
+    {
+      g_rx_length = 0U;
+      g_tx_pending = 0U;
+      return;
+    }
+  }
+
+  if (g_tx_pending != 0U)
+  {
+    status = ux_device_class_cdc_acm_write_run(g_cdc_acm, g_rx_buffer, g_tx_length, &g_rx_length);
+    if (status == UX_STATE_NEXT)
+    {
+      g_rx_length = 0U;
+      g_tx_length = 0U;
+      g_tx_pending = 0U;
+    }
+    else if (status < UX_STATE_NEXT)
+    {
+      g_rx_length = 0U;
+      g_tx_length = 0U;
+      g_tx_pending = 0U;
+    }
+  }
+}
 /* USER CODE END 1 */
