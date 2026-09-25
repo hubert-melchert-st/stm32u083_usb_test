@@ -94,11 +94,8 @@ static UINT USBD_CDC_ACM_ReadCallback(struct UX_SLAVE_CLASS_CDC_ACM_STRUCT *cdc_
 
   if (g_cdc_echo_ctx.tx_busy != 0U)
   {
-    if (g_cdc_echo_ctx.pending_length == 0U)
-    {
-      _ux_utility_memory_copy(g_cdc_echo_ctx.pending_buffer, data_pointer, copy_len); /* Use case of memcpy is verified. */
-      g_cdc_echo_ctx.pending_length = copy_len;
-    }
+    _ux_utility_memory_copy(g_cdc_echo_ctx.pending_buffer, data_pointer, copy_len); /* Use case of memcpy is verified. */
+    g_cdc_echo_ctx.pending_length = copy_len;
     return UX_SUCCESS;
   }
 
@@ -108,14 +105,10 @@ static UINT USBD_CDC_ACM_ReadCallback(struct UX_SLAVE_CLASS_CDC_ACM_STRUCT *cdc_
   {
     g_cdc_echo_ctx.tx_busy = 1U;
   }
-  else if (write_status == UX_ERROR)
+  else
   {
     _ux_utility_memory_copy(g_cdc_echo_ctx.pending_buffer, data_pointer, copy_len); /* Use case of memcpy is verified. */
     g_cdc_echo_ctx.pending_length = copy_len;
-  }
-  else
-  {
-    g_cdc_echo_ctx.pending_length = 0U;
   }
 
   return UX_SUCCESS;
@@ -142,10 +135,6 @@ static void USBD_CDC_ACM_TrySendPending(void)
   {
     g_cdc_echo_ctx.pending_length = 0U;
     g_cdc_echo_ctx.tx_busy = 1U;
-  }
-  else if (status != UX_ERROR)
-  {
-    g_cdc_echo_ctx.pending_length = 0U;
   }
 }
 
@@ -199,7 +188,6 @@ VOID USBD_CDC_ACM_Deactivate(VOID *cdc_acm_instance)
   g_cdc_echo_ctx.pending_length = 0U;
   g_cdc_echo_ctx.tx_busy = 0U;
 
-  UX_PARAMETER_NOT_USED(cdc_acm_instance);
   /* USER CODE END USBD_CDC_ACM_Deactivate */
 
   return;
