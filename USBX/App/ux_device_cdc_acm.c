@@ -126,23 +126,26 @@ VOID USBD_CDC_ACM_ParameterChange(VOID *cdc_acm_instance)
 VOID USBD_CDC_ACM_Process(VOID *arg)
 {
   UINT status;
+  UX_SLAVE_CLASS_CDC_ACM *cdc_acm;
 
   UX_PARAMETER_NOT_USED(arg);
 
-  if (g_cdc_echo_ctx.instance == UX_NULL)
+  cdc_acm = g_cdc_echo_ctx.instance;
+  if (cdc_acm == UX_NULL)
   {
     return;
   }
 
   if (g_cdc_echo_ctx.tx_pending == 0U)
   {
-    status = ux_device_class_cdc_acm_read_run(g_cdc_echo_ctx.instance,
+    status = ux_device_class_cdc_acm_read_run(cdc_acm,
                                               g_cdc_echo_ctx.rx_buffer,
                                               sizeof(g_cdc_echo_ctx.rx_buffer),
                                               &g_cdc_echo_ctx.rx_length);
     if ((status == UX_STATE_NEXT) && (g_cdc_echo_ctx.rx_length > 0U))
     {
       g_cdc_echo_ctx.tx_length = g_cdc_echo_ctx.rx_length;
+      g_cdc_echo_ctx.rx_length = 0U;
       g_cdc_echo_ctx.tx_actual_length = 0U;
       g_cdc_echo_ctx.tx_pending = 1U;
     }
@@ -158,7 +161,7 @@ VOID USBD_CDC_ACM_Process(VOID *arg)
 
   if (g_cdc_echo_ctx.tx_pending != 0U)
   {
-    status = ux_device_class_cdc_acm_write_run(g_cdc_echo_ctx.instance,
+    status = ux_device_class_cdc_acm_write_run(cdc_acm,
                                                g_cdc_echo_ctx.rx_buffer,
                                                g_cdc_echo_ctx.tx_length,
                                                &g_cdc_echo_ctx.tx_actual_length);
